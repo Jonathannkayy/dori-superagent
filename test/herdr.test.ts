@@ -28,13 +28,13 @@ describe("herdr argv", () => {
       ["--session", "iso", "pane", "close", "w1:p1"],
     ]);
     const plain = recorder();
-    await new Herdr(plain.exec, undefined).read("w1:p1");
+    await new Herdr(plain.exec, "").read("w1:p1");
     expect(plain.calls).toEqual([["pane", "read", "w1:p1", "--lines", "80", "--source", "recent"]]);
   });
 
   test("workspace, tab and split never take focus, and pass workspace and env as flags", async () => {
     const r = recorder((argv) => ok(argv[1] === "split" ? { pane } : { root_pane: pane }));
-    const h = new Herdr(r.exec, undefined);
+    const h = new Herdr(r.exec, "");
     expect(await h.createWorkspace("dori", "/w")).toEqual({ paneId: "w1:p2", tabId: "w1:t2", workspaceId: "w1" });
     await h.createTab("fix-login", "/w", "w3", { DORI_LANE: "fix-login", NOTE: "a b" });
     await h.createTab("other", "/w");
@@ -49,7 +49,7 @@ describe("herdr argv", () => {
 
   test("a message is one argv element, delivered verbatim: quotes, $(...) and newlines are never expanded", async () => {
     const r = recorder();
-    const h = new Herdr(r.exec, undefined);
+    const h = new Herdr(r.exec, "");
     const text = `it's "done" $(rm -rf ~) \`id\`\nline two`;
     await h.deliver("w1:p1", text, "idle");
     await h.deliver("w1:p9", text, "shell");
@@ -63,7 +63,7 @@ describe("herdr argv", () => {
 
 describe("herdr replies", () => {
   test("a create that returns no pane id throws instead of handing back an empty pane", async () => {
-    const h = new Herdr(recorder(() => ok({ root_pane: { tab_id: "w1:t2" } })).exec, undefined);
+    const h = new Herdr(recorder(() => ok({ root_pane: { tab_id: "w1:t2" } })).exec, "");
     await expect(h.createTab("x", "/w")).rejects.toThrow("herdr did not return a pane id");
   });
 
@@ -72,17 +72,17 @@ describe("herdr replies", () => {
     const e = await onStdout.close("w1:p7").catch((x: unknown) => x);
     expect(e).toBeInstanceOf(HerdrError);
     expect((e as HerdrError).message).toBe('herdr --session iso pane close w1:p7 failed (1): {"error":{"code":"pane_not_found"}}');
-    const onStderr = new Herdr(recorder(() => fail("socket closed", "partial")).exec, undefined);
+    const onStderr = new Herdr(recorder(() => fail("socket closed", "partial")).exec, "");
     await expect(onStderr.read("w1:p7")).rejects.toThrow("failed (1): socket closed");
   });
 
   test("a successful call whose output is not JSON reads as an empty result", async () => {
-    const h = new Herdr(recorder(() => ({ code: 0, stdout: "ok\n", stderr: "" })).exec, undefined);
+    const h = new Herdr(recorder(() => ({ code: 0, stdout: "ok\n", stderr: "" })).exec, "");
     await expect(h.run("w1:p1", "omo")).resolves.toBeUndefined();
   });
 
   test("status: pane_not_found is gone, but a herdr server that is down is an error, never a lost pane", async () => {
-    const status = (reply: ExecResult) => new Herdr(recorder(() => reply).exec, undefined).status("w1:p1");
+    const status = (reply: ExecResult) => new Herdr(recorder(() => reply).exec, "").status("w1:p1");
     expect(await status(fail('{"error":{"code":"pane_not_found","message":"pane w1:p1 not found"}}'))).toBe("gone");
     expect(await status(ok({}))).toBe("gone");
     await expect(status(fail('{"error":{"code":"server_not_running","message":"no herdr server is running"}}'))).rejects.toThrow(
@@ -91,7 +91,7 @@ describe("herdr replies", () => {
   });
 
   test("status: no agent is a shell; herdr's four states pass through and anything else is unknown", async () => {
-    const status = (p: Record<string, unknown>) => new Herdr(recorder(() => ok({ pane: p })).exec, undefined).status("w1:p1");
+    const status = (p: Record<string, unknown>) => new Herdr(recorder(() => ok({ pane: p })).exec, "").status("w1:p1");
     expect(await status({ agent: null, agent_status: "idle" })).toBe("shell");
     for (const s of ["idle", "working", "blocked", "done"] as const) expect(await status({ agent: "omo", agent_status: s })).toBe(s);
     expect(await status({ agent: "omo", agent_status: "compacting" })).toBe("unknown");
