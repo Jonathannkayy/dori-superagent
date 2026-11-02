@@ -45,7 +45,7 @@ function setup() {
     const r = Bun.spawnSync(["bash", script], { env: { ...gitEnv, HOME: home, DORI_SRC: src, SKILLS_DIR: join(home, "skills"), PATH: `${bin}:${process.env.PATH}`, ...env } });
     return { code: r.exitCode, err: r.stderr.toString() };
   };
-  return { upstream, src, home, cli, upstreamCommit, install };
+  return { root, upstream, src, home, cli, upstreamCommit, install };
 }
 
 test("a second install over a clean checkout pulls upstream", () => {
@@ -84,4 +84,31 @@ test("DORI_NO_PULL=1 installs a changed checkout as it is, without pulling", () 
   expect(git(src, "rev-parse", "HEAD")).toBe(before);
   expect(readFileSync(join(src, cli), "utf8")).toBe("patched\n");
   expect(existsSync(join(home, ".dori/config.json"))).toBe(true);
+});
+
+test("a pull blocked by a local commit lists that commit and how to go on", () => {
+  // Given a checkout with its own commit on a file upstream has since changed.
+  const { src, cli, upstreamCommit, install } = setup();
+  upstreamCommit("v2\n");
+  writeFileSync(join(src, cli), "local fix\n");
+  git(src, "commit", "-qam", "local fix");
+  // When install.sh runs again.
+  const r = install();
+  // Then it fails and names the local commit, which git status alone would not show.
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("local fix");
+  expect(r.err).toContain("DORI_NO_PULL=1");
+});
+
+test("a failed fetch is not taken for local work: no reset is suggested", () => {
+  // Given a checkout with a local edit whose upstream cannot be reached.
+  const { root, src, cli, install } = setup();
+  writeFileSync(join(src, cli), "patched\n");
+  git(src, "remote", "set-url", "origin", join(root, "missing.git"));
+  // When install.sh runs again.
+  const r = install();
+  // Then it fails with git's reason and never tells the user to reset their work away.
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("missing.git");
+  expect(r.err).not.toContain("reset --hard");
 });
