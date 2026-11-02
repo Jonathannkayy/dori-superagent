@@ -229,6 +229,7 @@ describe("duty loop", () => {
     expect(lead.received).toEqual([]);
     expect(d.store.lane("quiet")!.nudges).toBe(0);
     expect(d.store.stop()).toBeUndefined();
+    expect(w.dutyCounts).toEqual([]);
 
     await main(["duty", "resume"], d);
     const events = await dutyTick(d);
