@@ -92,14 +92,16 @@ export const launchLane = async (deps: FlowDeps, input: LaunchInput): Promise<{ 
       if (check === GOAL_CHECKS) return { lane, startup: `STARTUP_NO_GOAL ${input.key} ${pane}: the agent is running but shows no goal after ${20 + GOAL_CHECKS * 10} s; last lines: ${lastLines(shown)}` };
       await deps.clock.sleep(10_000);
       shown = await readScreen(deps.run, pane, 40);
-      const failed = STARTUP_FAILURE.exec(shown);
-      if (failed) return { lane, startup: `STARTUP_ERROR ${input.key} ${pane}: ${failed[0]}` };
       // The goal is only good news while the agent is still running: re-check the status on every re-read.
       const again = await statusLookup(deps.run, pane);
       if (again.status !== "idle" && again.status !== "working") {
         const lost = again.error ? `status lookup failed: ${again.error}` : `agent status became ${again.status ?? "none"}`;
         return { lane, startup: `STARTUP_UNCONFIRMED ${input.key} ${pane}: ${lost} while waiting for its goal; last lines: ${lastLines(shown)}` };
       }
+      // A late failure stops the agent. A working agent's own output may quote these phrases (a file or log it reads),
+      // so only an idle agent with no goal is checked for one.
+      const failed = again.status === "idle" && !goalShown(shown, marker) ? STARTUP_FAILURE.exec(shown) : null;
+      if (failed) return { lane, startup: `STARTUP_ERROR ${input.key} ${pane}: ${failed[0]}` };
     }
     return { lane, startup: `STARTUP_OK ${input.key} ${pane}` };
   }

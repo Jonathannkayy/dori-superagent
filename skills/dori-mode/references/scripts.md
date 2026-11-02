@@ -59,7 +59,7 @@ Every module takes its HTTP, clock and timers as arguments. That is how the test
 ## Commands
 
 ### `dori launch <key> --title T --brief FILE --done "..." [--thread REF] [--model M] [--cwd DIR]`
-Opens a lane: appends the footer to the brief, opens a tab, starts the agent, and after 20 seconds checks it: `STARTUP_ERROR` on a known failure in the pane, `STARTUP_OK` only when herdr reports the agent idle or working and its status line shows `goalMarker` (unless that is empty), `STARTUP_NO_GOAL` when the agent runs but shows no goal for another 60 seconds, and `STARTUP_UNCONFIRMED` (with the last lines) otherwise. Exit 3 on anything but `STARTUP_OK`.
+Opens a lane: appends the footer to the brief, opens a tab, starts the agent, and after 20 seconds checks it: `STARTUP_ERROR` on a known failure in the pane (at that check, or on an idle agent with no goal during the goal wait), `STARTUP_OK` only when herdr reports the agent idle or working and `goalMarker` (unless that is empty) shows in the pane's footer, its last three non-empty lines, so agent output above it does not count, `STARTUP_NO_GOAL` when the agent runs but shows no goal for another 60 seconds, and `STARTUP_UNCONFIRMED` (with the last lines) otherwise. Exit 3 on anything but `STARTUP_OK`.
 
 ### `dori adopt <key> --pane ID --title T --brief FILE --done "..." [--thread REF]`
 Registers a lane that is already running.

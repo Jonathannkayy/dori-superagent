@@ -148,6 +148,8 @@ test("launch reports STARTUP_OK only on a ready agent status that shows a goal; 
   expect(await run("working", ["❯ ", "❯ ", "❯ ", goal], "slow-goal-lane")).toBe("STARTUP_OK slow-goal-lane w:p9");
   expect(await run("idle", "❯ ", "no-goal-lane")).toStartWith("STARTUP_NO_GOAL no-goal-lane w:p9");
   expect(await run("idle", ["❯ ", "❯ ", "usage limit reached\n❯ "], "limit-lane")).toBe("STARTUP_ERROR limit-lane w:p9: usage limit");
+  // A working agent has not failed: its own output may quote the failure phrases (here, while it reads launch.ts).
+  expect(await run("working", ["❯ ", "read launch.ts: /usage limit|rate limit|quota/\n❯ ", `read launch.ts: /usage limit|rate limit|quota/\n${goal}`], "quoting-lane")).toBe("STARTUP_OK quoting-lane w:p9");
   expect(await run("idle", `grep: ui.js returns "Pursuing goal" while active\n${"output\n".repeat(4)}❯ \n model • 10K`, "quoted-goal-lane")).toStartWith("STARTUP_NO_GOAL quoted-goal-lane w:p9");
   expect(await run(["idle", "done"], ["❯ ", goal], "stopped-lane")).toStartWith("STARTUP_UNCONFIRMED stopped-lane w:p9");
   // The marker is config, since the agent is: another agent's goal line counts, and an empty marker turns the wait off.
