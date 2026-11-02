@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Installs the dori-mode skill and the `dori` CLI.
 # Usage: curl -fsSL https://raw.githubusercontent.com/sisyphuslabs/dori-superagent/main/install.sh | bash
-# Needs: git, bun 1.3+. Optional env: DORI_SRC (clone dir), SKILLS_DIR (where your agent loads skills).
+# Needs: git, bun 1.3+. Optional env: DORI_SRC (clone dir), SKILLS_DIR (where your agent loads skills),
+# DORI_NO_PULL=1 (install an existing checkout as it is, without pulling).
 set -euo pipefail
 
 repo="https://github.com/sisyphuslabs/dori-superagent.git"
@@ -11,7 +12,17 @@ skills="${SKILLS_DIR:-$HOME/.agents/skills}"
 command -v bun >/dev/null || { echo "bun is required: https://bun.sh" >&2; exit 1; }
 command -v git >/dev/null || { echo "git is required" >&2; exit 1; }
 
-if [ -d "$src/.git" ]; then git -C "$src" pull --ff-only --quiet; else git clone --quiet --depth 1 "$repo" "$src"; fi
+if [ ! -d "$src/.git" ]; then
+  git clone --quiet --depth 1 "$repo" "$src"
+elif [ "${DORI_NO_PULL:-}" = 1 ]; then
+  echo "DORI_NO_PULL=1: installing $src as it is, without pulling" >&2
+elif ! git -C "$src" pull --ff-only --quiet; then
+  echo "Could not update $src. Changes in that checkout:" >&2
+  git -C "$src" status --short >&2
+  echo "To keep them and install the checkout as it is, run install.sh again with DORI_NO_PULL=1." >&2
+  echo "To drop them and update: git -C \"$src\" reset --hard '@{u}', then run install.sh again." >&2
+  exit 1
+fi
 
 mkdir -p "$skills"
 if [ -e "$skills/dori-mode" ] && [ ! -L "$skills/dori-mode" ]; then
