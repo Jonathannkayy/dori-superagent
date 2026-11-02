@@ -63,9 +63,9 @@ Dori 열은 저희가 실제로 굴리는 프로덕션 Dori와 Dori 모드(`skil
 
 레인은 자기 herdr 탭에 뜬 omo 세션 하나입니다. 브리프 하나에 레인 규칙(`prompts/lane-footer.md`)을 덧붙여서 시작합니다. 중간 결과는 `dori report`로 보고하고 `dori ready`로 끝내는데, `dori ready`는 증거 링크가 없으면 나가지 않습니다.
 
-듀티 루프는 `dori duty --interval 60`입니다. 듀티 omo 세션 옆 pane에서 도는 보통 프로세스입니다. 틱마다 idle이 된 pane에 쌓인 메시지를 밀어 넣고, 조용한 레인을 찔러 보고, 리드에게 올리고, pane이 사라진 레인은 lost로 표시합니다.
+듀티 루프는 `dori duty --interval 60`입니다. 듀티 omo 세션 옆 pane에서 도는 보통 프로세스입니다. 틱마다 idle이 된 pane에 쌓인 메시지를 밀어 넣고, 조용한 레인을 찔러 보고, 리드에게 올리고, pane이 사라진 레인은 lost로 표시합니다. 긴급 정지는 `dori duty stop --text '이유'`입니다. `dori duty resume` 전까지 틱마다 `DUTY stopped: <이유>`만 출력하고 듀티 일은 모두 건너뜁니다(밀어 넣기, 찌르기, 올리기, 듀티 카운트 없음). 쌓인 메시지는 inbox에서 기다립니다. `dori duty status`는 멈췄는지와 그 이유를 보여 줍니다.
 
-상태는 `~/.dori`(또는 `$DORI_HOME`) 아래 JSON입니다. `lanes/`, `inbox/`, `briefs/`, `receipts/`, 그리고 한 시간 루프가 쓰는 `backlog/`와 `loop/`. 에이전트 세션을 빼면 하네스가 더하는 상주 프로세스는 듀티 루프와 한 시간 루프 둘뿐이고, 런타임 의존성은 Bun 하나뿐입니다.
+상태는 `~/.dori`(또는 `$DORI_HOME`) 아래 JSON입니다. `lanes/`, `inbox/`, `briefs/`, `receipts/`, 그리고 한 시간 루프가 쓰는 `backlog/`와 `loop/`, 듀티 루프의 정지 파일이 놓이는 `duty/`. 에이전트 세션을 빼면 하네스가 더하는 상주 프로세스는 듀티 루프와 한 시간 루프 둘뿐이고, 런타임 의존성은 Bun 하나뿐입니다.
 
 ![lane lifecycle](docs/lane-flow.png)
 

@@ -61,9 +61,9 @@ lead 是唯一和你对话的会话。它把你的请求写成 brief，用 `dori
 
 一条 lane 就是一个 omo 会话，开在自己的 herdr 标签页里，启动时拿到一份 brief，后面附着 lane 规则（`prompts/lane-footer.md`）。它用 `dori report` 汇报阶段进展，用 `dori ready` 收尾；`dori ready` 没有证据链接就不会发出去。
 
-duty 循环是 `dori duty --interval 60`，一个普通进程，跑在 duty omo 会话旁边的窗格里。每一轮它把排队的消息送进已经空闲的窗格，催一下沉默太久的 lane，向 lead 上报，并把窗格已经消失的 lane 标记为 lost。
+duty 循环是 `dori duty --interval 60`，一个普通进程，跑在 duty omo 会话旁边的窗格里。每一轮它把排队的消息送进已经空闲的窗格，催一下沉默太久的 lane，向 lead 上报，并把窗格已经消失的 lane 标记为 lost。`dori duty stop --text '原因'` 是它的急停开关：在 `dori duty resume` 之前，每一轮只打印 `DUTY stopped: <原因>`，跳过所有 duty 工作（不送消息、不催促、不上报、不记 duty 计数），排队的消息留在 inbox 里等着。`dori duty status` 显示它是否停着以及原因。
 
-状态是 `~/.dori`（或 `$DORI_HOME`）下的 JSON 文件：`lanes/`、`inbox/`、`briefs/`、`receipts/`，以及每小时循环用的 `backlog/` 和 `loop/`。除了 Agent 会话，harness 新增的常驻进程只有 duty 循环和每小时循环两个，运行时依赖只有 Bun 一个。
+状态是 `~/.dori`（或 `$DORI_HOME`）下的 JSON 文件：`lanes/`、`inbox/`、`briefs/`、`receipts/`，以及每小时循环用的 `backlog/` 和 `loop/`，还有 duty 循环放停止文件的 `duty/`。除了 Agent 会话，harness 新增的常驻进程只有 duty 循环和每小时循环两个，运行时依赖只有 Bun 一个。
 
 ![lane lifecycle](docs/lane-flow.png)
 
