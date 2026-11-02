@@ -120,12 +120,13 @@ test("a quiet lane with no [REPORT] line logs NO-REPORT once, not on every tick"
   expect(await freshnessTick(deps(T0 + 31 * MIN), "/home/test")).toEqual([]);
 });
 
-test("launch reports STARTUP_OK only on a ready agent status; a blank pane is unconfirmed, a known failure is an error", async () => {
+test("launch reports STARTUP_OK only on a ready agent status that shows a goal; a blank pane is unconfirmed, a known failure is an error", async () => {
   const brief = join(state.dir, "brief.md");
-  const run = async (status: string | undefined, screen: string, key: string) => {
+  const run = async (status: string | undefined, screen: string | string[], key: string) => {
     writeFileSync(brief, "# brief\n");
     world = newWorld();
-    world.screen = screen;
+    if (Array.isArray(screen)) world.screens = [...screen];
+    else world.screen = screen;
     const base = depsFor(world, fakeClock(T0), state.dir);
     const inner = base.run;
     const deps = { ...base, run: async (argv: readonly string[]) => {
@@ -135,7 +136,10 @@ test("launch reports STARTUP_OK only on a ready agent status; a blank pane is un
     } };
     return (await launchLane(deps, { key, title: "t", brief, done: "closed acme/app#3" })).startup;
   };
-  expect(await run("idle", "❯ ", "ok-lane")).toBe("STARTUP_OK ok-lane w:p9");
+  const goal = "❯ \n Pursuing goal (1m)";
+  expect(await run("idle", goal, "ok-lane")).toBe("STARTUP_OK ok-lane w:p9");
+  expect(await run("working", ["❯ ", "❯ ", "❯ ", goal], "slow-goal-lane")).toBe("STARTUP_OK slow-goal-lane w:p9");
+  expect(await run("idle", "❯ ", "no-goal-lane")).toStartWith("STARTUP_NO_GOAL no-goal-lane w:p9");
   expect(await run(undefined, "", "blank-lane")).toStartWith("STARTUP_UNCONFIRMED blank-lane w:p9");
   expect(await run(undefined, "Error: provider refused the key\n$ ", "worded-lane")).toStartWith("STARTUP_UNCONFIRMED worded-lane w:p9");
   expect(await run("idle", "No API key found\n❯ ", "err-lane")).toBe("STARTUP_ERROR err-lane w:p9: No API key");

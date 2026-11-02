@@ -21,6 +21,10 @@ export type LaunchInput = {
 export class LaunchError extends Error {}
 
 const STARTUP_FAILURE = /Cannot find module|All fallback models failed|No API key|model_not_available|usage limit|rate limit|quota|Session crashed|unknown provider/i;
+// omo's status line while a goal is active (senpi goal/ui.ts). A lane that starts but never sets its goal stops after
+// its first turn, so a ready status alone is not a good start.
+const GOAL_SHOWN = /\bPursuing goal\b/;
+const GOAL_CHECKS = 6;
 
 export const validateLaunch = async (deps: FlowDeps, input: LaunchInput): Promise<void> => {
   if (!LANE_KEY.test(input.key)) throw new LaunchError(`key must match ${LANE_KEY}`);
@@ -78,7 +82,15 @@ export const launchLane = async (deps: FlowDeps, input: LaunchInput): Promise<{ 
   const bad = STARTUP_FAILURE.exec(screen);
   if (bad) return { lane, startup: `STARTUP_ERROR ${input.key} ${pane}: ${bad[0]}` };
   const { status, error } = await statusLookup(deps.run, pane);
-  if (status === "idle" || status === "working") return { lane, startup: `STARTUP_OK ${input.key} ${pane}` };
+  if (status === "idle" || status === "working") {
+    let shown = screen;
+    for (let check = 0; !GOAL_SHOWN.test(shown); check++) {
+      if (check === GOAL_CHECKS) return { lane, startup: `STARTUP_NO_GOAL ${input.key} ${pane}: the agent is running but shows no goal after ${20 + GOAL_CHECKS * 10} s; last lines: ${lastLines(shown)}` };
+      await deps.clock.sleep(10_000);
+      shown = await readScreen(deps.run, pane, 40);
+    }
+    return { lane, startup: `STARTUP_OK ${input.key} ${pane}` };
+  }
   const why = error ? `status lookup failed: ${error}` : `no ready agent status (${status ?? "none"})`;
   return { lane, startup: `STARTUP_UNCONFIRMED ${input.key} ${pane}: ${why}; last lines: ${lastLines(screen)}` };
 };
