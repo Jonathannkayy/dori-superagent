@@ -17,6 +17,7 @@ const USAGE = `dori - a proactive multi-session harness on herdr + omo
   dori ready <key> --text T --evidence LINK [--evidence LINK ...]
   dori send <lead|duty|key|pane> --text T     deliver now, or queue until the pane is idle
   dori duty [--once] [--interval SECONDS]     flush inboxes, nudge idle lanes, escalate, detect lost lanes
+  dori duty stop [--text WHY] | resume | status   kill switch
   dori loop [--once] [--interval S] [--max-lanes N] [--max-starts N] [--max-load L] [--force]
                                               hourly: sync backlog, audit missed work, start the next item, ask decisions
   dori loop stop [--text WHY] | resume | status   kill switch and last run
@@ -133,9 +134,25 @@ export async function main(argv: readonly string[], d: Deps = defaultDeps()): Pr
       console.log(`${await send(d, need(x, "target"), await textOf(a), one(a, "from") ?? process.env["DORI_LANE"] ?? "cli")} ${x}`);
       return 0;
     case "duty": {
+      if (x === "stop") {
+        d.store.setStop(d.now(), one(a, "text") ?? "stopped by hand", "duty");
+        console.log("DUTY STOPPED");
+        return 0;
+      }
+      if (x === "resume") {
+        d.store.clearStop("duty");
+        console.log("DUTY RESUMED");
+        return 0;
+      }
+      if (x === "status") {
+        const stop = d.store.stop("duty");
+        console.log(stop ? `stopped: ${stop.reason}` : "running (no stop file)");
+        return 0;
+      }
+      if (x !== undefined) throw new Refusal(`unknown duty command ${x}\n\n${USAGE}`);
       const interval = Number(one(a, "interval") ?? "60") * 1000;
       do {
-        for (const e of await dutyTick(d)) console.log(`DUTY ${e.lane ?? e.pane} ${e.action}${e.detail ? `: ${e.detail}` : ""}`);
+        for (const e of await dutyTick(d)) console.log(`DUTY ${[e.lane ?? e.pane, e.action].filter(Boolean).join(" ")}${e.detail ? `: ${e.detail}` : ""}`);
         if (one(a, "once")) break;
         await Bun.sleep(interval);
       } while (true);

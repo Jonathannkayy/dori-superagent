@@ -63,9 +63,9 @@ The lead is the only session that talks to you. It turns a request into a brief,
 
 A lane is one omo session in its own herdr tab, started with one brief and the lane rules appended to it (`prompts/lane-footer.md`). It reports milestones with `dori report` and finishes with `dori ready`, which refuses to go out without an evidence link.
 
-The duty loop is `dori duty --interval 60`, a plain process in a pane next to a duty omo session. Each tick it flushes queued messages into panes that have gone idle, nudges lanes that have been silent, escalates to the lead, and marks a lane whose pane vanished as lost.
+The duty loop is `dori duty --interval 60`, a plain process in a pane next to a duty omo session. Each tick it flushes queued messages into panes that have gone idle, nudges lanes that have been silent, escalates to the lead, and marks a lane whose pane vanished as lost. `dori duty stop --text 'why'` is its kill switch: until `dori duty resume`, every tick does nothing, and queued messages wait in the inbox. `dori duty status` says whether it is stopped and why.
 
-State is JSON on disk under `~/.dori` (or `$DORI_HOME`): `lanes/`, `inbox/`, `briefs/`, `receipts/`, plus `backlog/` and `loop/` for the hourly loop. Besides the agent sessions, the only long-running processes the harness adds are the duty loop and the hourly loop, and the only runtime dependency is Bun.
+State is JSON on disk under `~/.dori` (or `$DORI_HOME`): `lanes/`, `inbox/`, `briefs/`, `receipts/`, plus `backlog/` and `loop/` for the hourly loop and `duty/` for the duty loop's stop file. Besides the agent sessions, the only long-running processes the harness adds are the duty loop and the hourly loop, and the only runtime dependency is Bun.
 
 ![lane lifecycle](docs/lane-flow.png)
 
