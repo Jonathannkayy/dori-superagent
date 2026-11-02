@@ -22,9 +22,12 @@ export class LaunchError extends Error {}
 
 const STARTUP_FAILURE = /Cannot find module|All fallback models failed|No API key|model_not_available|usage limit|rate limit|quota|Session crashed|unknown provider/i;
 // omo's status line while a goal is active (senpi goal/ui.ts). A lane that starts but never sets its goal stops after
-// its first turn, so a ready status alone is not a good start.
+// its first turn, so a ready status alone is not a good start. The status line shares its row with other extensions'
+// status text, so the phrase is matched in the footer (the last lines), never in agent output that quotes it.
 const GOAL_SHOWN = /\bPursuing goal\b/;
 const GOAL_CHECKS = 6;
+const goalShown = (screen: string): boolean =>
+  GOAL_SHOWN.test(screen.split("\n").filter((s) => s.trim()).slice(-3).join("\n"));
 
 export const validateLaunch = async (deps: FlowDeps, input: LaunchInput): Promise<void> => {
   if (!LANE_KEY.test(input.key)) throw new LaunchError(`key must match ${LANE_KEY}`);
@@ -84,10 +87,18 @@ export const launchLane = async (deps: FlowDeps, input: LaunchInput): Promise<{ 
   const { status, error } = await statusLookup(deps.run, pane);
   if (status === "idle" || status === "working") {
     let shown = screen;
-    for (let check = 0; !GOAL_SHOWN.test(shown); check++) {
+    for (let check = 0; !goalShown(shown); check++) {
       if (check === GOAL_CHECKS) return { lane, startup: `STARTUP_NO_GOAL ${input.key} ${pane}: the agent is running but shows no goal after ${20 + GOAL_CHECKS * 10} s; last lines: ${lastLines(shown)}` };
       await deps.clock.sleep(10_000);
       shown = await readScreen(deps.run, pane, 40);
+      const failed = STARTUP_FAILURE.exec(shown);
+      if (failed) return { lane, startup: `STARTUP_ERROR ${input.key} ${pane}: ${failed[0]}` };
+      // The goal is only good news while the agent is still running: re-check the status on every re-read.
+      const again = await statusLookup(deps.run, pane);
+      if (again.status !== "idle" && again.status !== "working") {
+        const lost = again.error ? `status lookup failed: ${again.error}` : `agent status became ${again.status ?? "none"}`;
+        return { lane, startup: `STARTUP_UNCONFIRMED ${input.key} ${pane}: ${lost} while waiting for its goal; last lines: ${lastLines(shown)}` };
+      }
     }
     return { lane, startup: `STARTUP_OK ${input.key} ${pane}` };
   }
