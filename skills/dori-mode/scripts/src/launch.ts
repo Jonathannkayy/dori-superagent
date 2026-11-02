@@ -21,13 +21,13 @@ export type LaunchInput = {
 export class LaunchError extends Error {}
 
 const STARTUP_FAILURE = /Cannot find module|All fallback models failed|No API key|model_not_available|usage limit|rate limit|quota|Session crashed|unknown provider/i;
-// omo's status line while a goal is active (senpi goal/ui.ts). A lane that starts but never sets its goal stops after
-// its first turn, so a ready status alone is not a good start. The status line shares its row with other extensions'
-// status text, so the phrase is matched in the footer (the last lines), never in agent output that quotes it.
-const GOAL_SHOWN = /\bPursuing goal\b/;
+// `goalMarker` is the agent's status text while a goal is active (omo: `Pursuing goal`). A lane that starts but never
+// sets its goal stops after its first turn, so a ready status alone is not a good start. The status line shares its row
+// with other extensions' status text, so the marker is matched in the footer (the last lines), never in agent output
+// that quotes it. An empty marker turns the check off.
 const GOAL_CHECKS = 6;
-const goalShown = (screen: string): boolean =>
-  GOAL_SHOWN.test(screen.split("\n").filter((s) => s.trim()).slice(-3).join("\n"));
+const goalShown = (screen: string, marker: string): boolean =>
+  screen.split("\n").filter((s) => s.trim()).slice(-3).join("\n").includes(marker);
 
 export const validateLaunch = async (deps: FlowDeps, input: LaunchInput): Promise<void> => {
   if (!LANE_KEY.test(input.key)) throw new LaunchError(`key must match ${LANE_KEY}`);
@@ -86,8 +86,9 @@ export const launchLane = async (deps: FlowDeps, input: LaunchInput): Promise<{ 
   if (bad) return { lane, startup: `STARTUP_ERROR ${input.key} ${pane}: ${bad[0]}` };
   const { status, error } = await statusLookup(deps.run, pane);
   if (status === "idle" || status === "working") {
+    const marker = deps.config.goalMarker;
     let shown = screen;
-    for (let check = 0; !goalShown(shown); check++) {
+    for (let check = 0; marker && !goalShown(shown, marker); check++) {
       if (check === GOAL_CHECKS) return { lane, startup: `STARTUP_NO_GOAL ${input.key} ${pane}: the agent is running but shows no goal after ${20 + GOAL_CHECKS * 10} s; last lines: ${lastLines(shown)}` };
       await deps.clock.sleep(10_000);
       shown = await readScreen(deps.run, pane, 40);

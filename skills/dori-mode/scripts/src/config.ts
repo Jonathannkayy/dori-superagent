@@ -27,6 +27,7 @@ export type DoriConfig = {
   readonly agentCommand: ArgvTemplate;
   readonly defaultModel: string;
   readonly launchKeywords: string;
+  readonly goalMarker: string;
   readonly sessionsDir: string;
   readonly nudgeAfterMin: number;
   readonly postAfterMin: number;
@@ -48,6 +49,7 @@ export const defaultConfig = (home = homedir()): DoriConfig => ({
   agentCommand: ["omo", "--model", "{model}", "{prompt}"],
   defaultModel: "anthropic/claude-opus-5-5",
   launchKeywords: "ulw set goal and work",
+  goalMarker: "Pursuing goal",
   sessionsDir: join(home, ".omo", "agent", "sessions"),
   nudgeAfterMin: 15,
   postAfterMin: 20,

@@ -123,13 +123,15 @@ test("a quiet lane with no [REPORT] line logs NO-REPORT once, not on every tick"
 test("launch reports STARTUP_OK only on a ready agent status that shows a goal; a blank pane is unconfirmed, a known failure is an error", async () => {
   const brief = join(state.dir, "brief.md");
   // A status list is returned one per lookup, the last one repeating.
-  const run = async (status: string | undefined | (string | undefined)[], screen: string | string[], key: string) => {
+  let waits = 0;
+  const run = async (status: string | undefined | (string | undefined)[], screen: string | string[], key: string, patch: { goalMarker?: string } = {}) => {
     const statuses = Array.isArray(status) ? [...status] : [status];
     writeFileSync(brief, "# brief\n");
     world = newWorld();
     if (Array.isArray(screen)) world.screens = [...screen];
     else world.screen = screen;
-    const base = depsFor(world, fakeClock(T0), state.dir);
+    waits = 0;
+    const base = depsFor(world, { ...fakeClock(T0), sleep: async () => void waits++ }, state.dir, patch);
     const inner = base.run;
     const deps = { ...base, run: async (argv: readonly string[]) => {
       if (argv[0] === "herdr" && argv[1] === "tab" && argv[2] === "create") return { code: 0, out: JSON.stringify({ result: { root_pane: { pane_id: "w:p9" }, tab_id: "w:t9" } }), err: "" };
@@ -148,6 +150,10 @@ test("launch reports STARTUP_OK only on a ready agent status that shows a goal; 
   expect(await run("idle", ["❯ ", "❯ ", "usage limit reached\n❯ "], "limit-lane")).toBe("STARTUP_ERROR limit-lane w:p9: usage limit");
   expect(await run("idle", `grep: ui.js returns "Pursuing goal" while active\n${"output\n".repeat(4)}❯ \n model • 10K`, "quoted-goal-lane")).toStartWith("STARTUP_NO_GOAL quoted-goal-lane w:p9");
   expect(await run(["idle", "done"], ["❯ ", goal], "stopped-lane")).toStartWith("STARTUP_UNCONFIRMED stopped-lane w:p9");
+  // The marker is config, since the agent is: another agent's goal line counts, and an empty marker turns the wait off.
+  expect(await run("idle", "❯ \n goal: ship the fix", "other-agent-lane", { goalMarker: "goal:" })).toBe("STARTUP_OK other-agent-lane w:p9");
+  expect(await run("idle", "❯ ", "no-marker-lane", { goalMarker: "" })).toBe("STARTUP_OK no-marker-lane w:p9");
+  expect(waits).toBe(1);
   expect(await run(undefined, "", "blank-lane")).toStartWith("STARTUP_UNCONFIRMED blank-lane w:p9");
   expect(await run(undefined, "Error: provider refused the key\n$ ", "worded-lane")).toStartWith("STARTUP_UNCONFIRMED worded-lane w:p9");
   expect(await run("idle", "No API key found\n❯ ", "err-lane")).toBe("STARTUP_ERROR err-lane w:p9: No API key");
