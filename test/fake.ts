@@ -80,7 +80,7 @@ export class World {
   deps(): Deps {
     return {
       store: new Store(mkdtempSync(join(tmpdir(), "dori-test-"))),
-      herdr: new Herdr(this.exec, undefined),
+      herdr: new Herdr(this.exec, ""),
       exec: this.exec,
       now: () => this.clock,
       agentCmd: "omo",
