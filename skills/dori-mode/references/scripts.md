@@ -26,7 +26,7 @@ Needs: bun 1.3+, herdr, git, and the GitHub CLI (`gh`) for `merged`/`closed` sig
 | `ignorePanes`, `leadPane` | none | panes the sweeps skip; `leadPane` is also where lanes report |
 | `defaultCwd` | home | where lanes start, and the repo whose worktrees they own |
 | `agentCommand`, `defaultModel`, `launchKeywords` | `omo --model {model} {prompt}` | `launch` |
-| `goalMarker` | `Pursuing goal` | `launch`: the agent's status text while a goal is active; empty turns the goal check off |
+| `goalMarker` | `Pursuing goal` | `launch`: the agent's status text while a goal is active; empty turns the goal check off, and a value that is not a string uses the default |
 | `sessionsDir` | `~/.omo/agent/sessions` | session-id lookup |
 | `nudgeAfterMin`, `postAfterMin` | 15, 20 | `freshness` |
 | `closeAfterMin` | 5 | `watch` |
