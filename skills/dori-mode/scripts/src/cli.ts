@@ -382,9 +382,16 @@ try {
         if (edit) await slack.edit(to, edit, text);
         else console.log(`SENT ${(await slack.post(to, text, thread)).ts}`);
       } else if (platform === "telegram") {
+        // Number("telegram:-1001/42") is NaN, and the Telegram target drops a falsy threadId, so a bad --thread
+        // would post to the group's General topic.
+        const id = (flag: string, value: string, what: string): number => {
+          const n = Number(value);
+          return Number.isSafeInteger(n) && n > 0 ? n : die(`--${flag} must be a Telegram ${what} id, a whole number above 0`);
+        };
+        const target = { chatId: to, ...(thread ? { threadId: id("thread", thread, "topic") } : {}) };
+        const messageId = edit ? id("edit", edit, "message") : undefined;
         const tg = new Telegram(fetchHttp, realClock, token("DORI_TELEGRAM_TOKEN"));
-        const target = { chatId: to, ...(thread ? { threadId: Number(thread) } : {}) };
-        if (edit) await tg.edit(target, Number(edit), text);
+        if (messageId !== undefined) await tg.edit(target, messageId, text);
         else console.log(`SENT ${await tg.send(target, text)}`);
       } else if (platform === "discord") {
         const dc = new Discord(fetchHttp, realClock, token("DORI_DISCORD_TOKEN"));
