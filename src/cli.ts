@@ -194,6 +194,8 @@ export async function main(argv: readonly string[], d: Deps = defaultDeps()): Pr
       }
       if (x !== undefined) throw new Refusal(`unknown duty command ${x}\n\n${USAGE}`);
       const interval = Number(one(a, "interval") ?? "60") * 1000;
+      // Bun.sleep(NaN) and Bun.sleep(0) return at once, so a bad value would run duty passes back to back.
+      if (!(Number.isFinite(interval) && interval > 0)) throw new Refusal("--interval must be a finite positive number of seconds");
       do {
         for (const e of await dutyTick(d)) console.log(`DUTY ${[e.lane ?? e.pane, e.action].filter(Boolean).join(" ")}${e.detail ? `: ${e.detail}` : ""}`);
         if (one(a, "once")) break;

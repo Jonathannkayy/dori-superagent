@@ -253,6 +253,16 @@ describe("duty loop", () => {
     expect(lead.received).toEqual(["held note"]);
   });
 
+  test("duty refuses an --interval that is not a positive number before it runs a tick", async () => {
+    const { w, d } = setup();
+    for (const bad of ["abc", "0", "-5", "30s"]) {
+      await expect(main(["duty", "--once", "--interval", bad], d)).rejects.toThrow("--interval must be a finite positive number of seconds");
+    }
+    expect(w.dutyCounts).toEqual([]);
+    expect(await main(["duty", "--once", "--interval", "0.5"], d)).toBe(0);
+    expect(w.dutyCounts).toHaveLength(1);
+  });
+
   test("a working lane counts as activity; a vanished pane is reported LOST", async () => {
     const { w, d, lead, brief } = setup();
     const lane = await startLane(d, "busy", brief, { workspace: "w1" });
