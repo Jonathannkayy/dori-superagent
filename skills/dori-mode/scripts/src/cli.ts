@@ -105,7 +105,11 @@ const opt = (name: string): string | undefined => {
 };
 const need = (name: string): string => opt(name) || die(`--${name} is required`);
 const key = flags.positionals[0];
-const loopMin = Number(opt("loop") ?? 0);
+// Bun.sleep(NaN) returns at once, so a --loop such as "5m" would run the watch's ticks back to back.
+const loopMinutes = (): number => {
+  const minutes = Number(opt("loop") ?? 0);
+  return Number.isFinite(minutes) && minutes >= 0 ? minutes : die("--loop must be a number of minutes, 0 or more");
+};
 const strings = (name: string): string[] => {
   const value = flags.values[name];
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -330,22 +334,23 @@ try {
         await Bun.sleep(30_000);
       }
     case "freshness":
-      await every(loopMin, async () => {
+      await every(loopMinutes(), async () => {
         for (const a of await freshnessTick(deps, process.env.HOME ?? "")) console.log(`${a.kind.toUpperCase()} ${a.lane} ${a.detail}`);
       });
       break;
     case "dead-panes": {
       const seen = new Set<string>();
       const paneState = newDeadPaneState();
-      await every(loopMin, async () => {
+      await every(loopMinutes(), async () => {
         for (const line of await deadPaneTick(run, config, seen, new Date().toISOString().slice(0, 13), paneState)) console.log(line);
       });
       break;
     }
     case "guard": {
       const state = { alerting: false };
+      const minutes = loopMinutes();
       console.log("HOST_GUARD_READY");
-      await every(loopMin, async () => {
+      await every(minutes, async () => {
         for (const line of guardTick(await sampleHost(run), config.guard, state)) console.log(line);
       });
       break;
@@ -436,7 +441,7 @@ try {
           tg,
           store,
           { ownerId, groupChatId, topicId },
-          loopMin,
+          loopMinutes(),
           (i) =>
             console.log(
               `INBOUND ${i.kind === "edit" ? "edit:" : ""}${i.source} ${i.chat} ${i.thread ?? "-"} ${i.updateId} ${i.from} ${JSON.stringify(i.text ?? "")}` +
@@ -452,7 +457,7 @@ try {
       const slack = new Slack(fetchHttp, realClock, auth, undefined, ledger);
       const me = String((await slack.call("auth.test", {})).user_id ?? die("auth.test returned no user_id"));
       console.log("INBOUND_READY slack");
-      await every(loopMin, async () => {
+      await every(loopMinutes(), async () => {
         for (const i of await pollSlackInbound(slack, ledger, { selfUserId: me })) console.log(`INBOUND ${i.source} ${i.channel} ${i.threadTs ?? "-"} ${i.ts || "-"} ${i.user ?? "-"} ${JSON.stringify((i.text ?? "").slice(0, 200))}`);
       });
       break;
