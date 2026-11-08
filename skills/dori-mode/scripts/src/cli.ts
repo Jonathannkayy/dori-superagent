@@ -106,9 +106,12 @@ const opt = (name: string): string | undefined => {
 const need = (name: string): string => opt(name) || die(`--${name} is required`);
 const key = flags.positionals[0];
 // Bun.sleep(NaN) returns at once, so a --loop such as "5m" would run the watch's ticks back to back.
+// A bare --loop or an empty value would read as 0, so only a missing flag means one-shot.
 const loopMinutes = (): number => {
-  const minutes = Number(opt("loop") ?? 0);
-  return Number.isFinite(minutes) && minutes >= 0 ? minutes : die("--loop must be a number of minutes, 0 or more");
+  if (flags.values.loop === undefined) return 0;
+  const value = opt("loop");
+  const minutes = Number(value);
+  return value && Number.isFinite(minutes) && minutes >= 0 ? minutes : die("--loop must be a number of minutes, 0 or more");
 };
 const strings = (name: string): string[] => {
   const value = flags.values[name];
@@ -422,6 +425,7 @@ try {
       break;
     }
     case "inbound": {
+      const minutes = loopMinutes();
       if (key === "telegram") {
         const tg = new Telegram(fetchHttp, realClock, process.env.DORI_TELEGRAM_TOKEN ?? die("DORI_TELEGRAM_TOKEN is not set"));
         const store = fileTgInboundStore(`${config.stateDir}/telegram-offset`);
@@ -441,7 +445,7 @@ try {
           tg,
           store,
           { ownerId, groupChatId, topicId },
-          loopMinutes(),
+          minutes,
           (i) =>
             console.log(
               `INBOUND ${i.kind === "edit" ? "edit:" : ""}${i.source} ${i.chat} ${i.thread ?? "-"} ${i.updateId} ${i.from} ${JSON.stringify(i.text ?? "")}` +
@@ -457,7 +461,7 @@ try {
       const slack = new Slack(fetchHttp, realClock, auth, undefined, ledger);
       const me = String((await slack.call("auth.test", {})).user_id ?? die("auth.test returned no user_id"));
       console.log("INBOUND_READY slack");
-      await every(loopMinutes(), async () => {
+      await every(minutes, async () => {
         for (const i of await pollSlackInbound(slack, ledger, { selfUserId: me })) console.log(`INBOUND ${i.source} ${i.channel} ${i.threadTs ?? "-"} ${i.ts || "-"} ${i.user ?? "-"} ${JSON.stringify((i.text ?? "").slice(0, 200))}`);
       });
       break;

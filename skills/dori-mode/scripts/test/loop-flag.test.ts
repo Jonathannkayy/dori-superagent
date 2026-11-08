@@ -13,11 +13,17 @@ test("watch commands refuse a --loop that is not a number of minutes instead of 
     const config = join(state.dir, "config.json");
     writeFileSync(config, JSON.stringify({ stateDir: state.dir, defaultCwd: state.dir, hooks: {} }));
     const invoke = (...args: string[]) =>
-      run(["env", `DORI_CONFIG=${config}`, `DORI_STATE_DIR=${state.dir}`, process.execPath, cli, ...args], { timeoutMs: 10_000 });
-    for (const [command, value] of [["guard", "5m"], ["dead-panes", "abc"], ["freshness", "-1"], ["guard", "Infinity"]] as const) {
-      const r = await invoke(command, "--loop", value);
-      expect({ command, value, code: r.code, err: r.err, out: r.out }).toEqual({
-        command, value, code: 1, err: "--loop must be a number of minutes, 0 or more", out: "",
+      run(["env", `DORI_CONFIG=${config}`, `DORI_STATE_DIR=${state.dir}`, "DORI_TELEGRAM_TOKEN=123:not-a-real-token", "DORI_TELEGRAM_OWNER_ID=1",
+        "DORI_SLACK_TOKEN=xoxb-not-a-real-token", process.execPath, cli, ...args], { timeoutMs: 10_000 });
+    const refused = [
+      ["guard", "--loop", "5m"], ["dead-panes", "--loop", "abc"], ["freshness", "--loop", "-1"], ["guard", "--loop", "Infinity"],
+      ["guard", "--loop"], ["guard", "--loop", ""], ["guard", "--loop", " "],
+      ["inbound", "telegram", "--loop", "5m"], ["inbound", "slack", "--loop", "abc"],
+    ];
+    for (const args of refused) {
+      const r = await invoke(...args);
+      expect({ args, code: r.code, err: r.err, out: r.out }).toEqual({
+        args, code: 1, err: "--loop must be a number of minutes, 0 or more", out: "",
       });
     }
     for (const args of [["guard", "--loop", "0"], ["guard"]]) {
@@ -26,4 +32,4 @@ test("watch commands refuse a --loop that is not a number of minutes instead of 
       expect(r.out).toStartWith("HOST_GUARD_READY");
     }
   } finally { state.done(); }
-}, 60_000);
+}, 120_000);
