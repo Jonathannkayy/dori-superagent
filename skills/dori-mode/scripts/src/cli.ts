@@ -383,13 +383,17 @@ try {
         else console.log(`SENT ${(await slack.post(to, text, thread)).ts}`);
       } else if (platform === "telegram") {
         // Number("telegram:-1001/42") is NaN, and the Telegram target drops a falsy threadId, so a bad --thread
-        // would post to the group's General topic.
-        const id = (flag: string, value: string, what: string): number => {
-          const n = Number(value);
-          return Number.isSafeInteger(n) && n > 0 ? n : die(`--${flag} must be a Telegram ${what} id, a whole number above 0`);
+        // would post to the group's General topic. A flag given empty (--thread "$UNSET") is refused too: no topic
+        // means leaving the flag out.
+        const id = (flag: string, what: string): number | undefined => {
+          if (flags.values[flag] === undefined) return undefined;
+          const value = opt(flag) ?? "";
+          return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value)
+            : die(`--${flag} must be a Telegram ${what} id, a whole number above 0`);
         };
-        const target = { chatId: to, ...(thread ? { threadId: id("thread", thread, "topic") } : {}) };
-        const messageId = edit ? id("edit", edit, "message") : undefined;
+        const threadId = id("thread", "topic");
+        const target = { chatId: to, ...(threadId !== undefined ? { threadId } : {}) };
+        const messageId = id("edit", "message");
         const tg = new Telegram(fetchHttp, realClock, token("DORI_TELEGRAM_TOKEN"));
         if (messageId !== undefined) await tg.edit(target, messageId, text);
         else console.log(`SENT ${await tg.send(target, text)}`);
