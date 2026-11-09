@@ -20,10 +20,13 @@ const send: Command = async ({ key, need, opt, values, config }) => {
   const platform = key ?? die("send needs slack, telegram or discord");
   const to = need("to");
   const text = need("text");
-  const thread = opt("thread");
-  const edit = opt("edit");
   const token = (name: string) => process.env[name] ?? die(`${name} is not set`);
+  // An empty --thread or --edit ("$UNSET") would post a new top-level message instead of replying or editing.
+  const present = (flag: string): string | undefined =>
+    values[flag] === undefined ? undefined : opt(flag) || die(`--${flag} is empty: leave it out to post a new message`);
   if (platform === "slack") {
+    const ts = present("edit");
+    const threadTs = present("thread");
     const slack = new Slack(
       fetchHttp,
       realClock,
@@ -31,8 +34,8 @@ const send: Command = async ({ key, need, opt, values, config }) => {
       undefined,
       new ThreadLedger(`${config.stateDir}/slack-threads.json`),
     );
-    if (edit) await slack.edit(to, edit, text);
-    else console.log(`SENT ${(await slack.post(to, text, thread)).ts}`);
+    if (ts !== undefined) await slack.edit(to, ts, text);
+    else console.log(`SENT ${(await slack.post(to, text, threadTs)).ts}`);
   } else if (platform === "telegram") {
     // Number("telegram:-1001/42") is NaN, and the Telegram target drops a falsy threadId, so a bad --thread
     // would post to the group's General topic. A flag given empty (--thread "$UNSET") is refused too: no topic
@@ -51,8 +54,10 @@ const send: Command = async ({ key, need, opt, values, config }) => {
     if (messageId !== undefined) await tg.edit(target, messageId, text);
     else console.log(`SENT ${await tg.send(target, text)}`);
   } else if (platform === "discord") {
+    const messageId = present("edit");
+    const thread = present("thread");
     const dc = new Discord(fetchHttp, realClock, token("DORI_DISCORD_TOKEN"));
-    if (edit) await dc.edit(to, edit, text);
+    if (messageId !== undefined) await dc.edit(to, messageId, text);
     else console.log(`SENT ${await dc.send(thread ?? to, text)}`);
   } else die(`unknown platform ${platform}`);
 };
