@@ -37,7 +37,7 @@ export type Args = { pos: string[]; flags: Map<string, string[]> };
 
 // Flags that never take a value. Every other flag takes the next argument verbatim, even one starting with "--", so a
 // relayed value such as `--from "$SENDER"` or `--text "$MSG"` can never turn into a flag like --to-shell (#66).
-const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(["once", "force", "dry-run", "to-shell", "all", "resume"]);
+const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(["once", "force", "dry-run", "to-shell", "all", "resume", "help"]);
 
 export function parse(argv: readonly string[]): Args {
   const pos: string[] = [];
@@ -49,8 +49,9 @@ export function parse(argv: readonly string[]): Args {
       continue;
     }
     const name = a.slice(2);
-    const next = argv[i + 1];
-    const value = BOOLEAN_FLAGS.has(name) || next === undefined ? "true" : (i++, next);
+    // A value flag at the very end (--text $MSG with MSG unset) has no value; reading it as "true" would send that word.
+    const value = BOOLEAN_FLAGS.has(name) ? "true" : argv[++i];
+    if (value === undefined) throw new Refusal(`--${name} needs a value`);
     flags.set(name, [...(flags.get(name) ?? []), value]);
   }
   return { pos, flags };
