@@ -63,8 +63,10 @@ export const need = (v: string | undefined, what: string): string => {
 };
 
 export async function textOf(a: Args): Promise<string> {
-  const t = one(a, "text");
-  if (t !== undefined) return t;
-  if (process.stdin.isTTY) throw new Refusal("give --text or pipe the message on stdin");
-  return (await Bun.stdin.text()).trim();
+  const given = one(a, "text");
+  if (given === undefined && process.stdin.isTTY) throw new Refusal("give --text or pipe the message on stdin");
+  const text = given ?? (await Bun.stdin.text()).trim();
+  // An unset variable (--text "$MSG") or an empty pipe would type a blank message into the pane and print DELIVERED.
+  if (!text.trim()) throw new Refusal("the message is empty: give --text or pipe the message on stdin");
+  return text;
 }
