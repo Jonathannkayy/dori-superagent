@@ -24,22 +24,52 @@ test("a narrow pane that cuts the goal footer short reads STARTUP_OK when the la
   const session = (at: string, lane: string, status: string | null) => {
     const id = `01a1b6d8-0000-7000-8000-${String(++n).padStart(12, "0")}`;
     const prompt = `ulw set goal and work. Read and execute the lane brief at ${brief} in full. You are the ${lane} lane; report as the brief's footer says.`;
-    writeFileSync(join(store, `${at.replace(/:/g, "-").replace(".", "-")}_${id}.jsonl`), [
-      { type: "session", version: 3, id, timestamp: at, cwd: "/repo" },
-      { type: "message", id: "m1", parentId: null, timestamp: at, message: { role: "user", content: [{ type: "text", text: prompt }] } },
-    ].map((line) => JSON.stringify(line)).join("\n") + "\n");
-    if (status) writeFileSync(join(store, "extensions", "goal", `${id}.json`), JSON.stringify({ version: 1, goal: { id: `g${n}`, threadId: id, objective: "ship it", status } }));
+    writeFileSync(
+      join(store, `${at.replace(/:/g, "-").replace(".", "-")}_${id}.jsonl`),
+      [
+        { type: "session", version: 3, id, timestamp: at, cwd: "/repo" },
+        {
+          type: "message",
+          id: "m1",
+          parentId: null,
+          timestamp: at,
+          message: { role: "user", content: [{ type: "text", text: prompt }] },
+        },
+      ]
+        .map((line) => JSON.stringify(line))
+        .join("\n") + "\n",
+    );
+    if (status)
+      writeFileSync(
+        join(store, "extensions", "goal", `${id}.json`),
+        JSON.stringify({ version: 1, goal: { id: `g${n}`, threadId: id, objective: "ship it", status } }),
+      );
   };
   const launch = async (key: string): Promise<string> => {
     writeFileSync(brief, "# brief\n");
     world = newWorld();
     world.screen = "Working (12s)\n❯ \n (😺 OmO Native by Q Kim) Pur...";
     const base = depsFor(world, fakeClock(T0), state.dir, { sessionsDir });
-    const deps = { ...base, run: async (argv: readonly string[]) => {
-      if (argv[0] === "herdr" && argv[1] === "tab" && argv[2] === "create") return { code: 0, out: JSON.stringify({ result: { root_pane: { pane_id: "w:p9" }, tab_id: "w:t9" } }), err: "" };
-      if (argv[0] === "herdr" && argv[1] === "pane" && argv[2] === "list") return { code: 0, out: JSON.stringify({ result: { panes: [{ pane_id: "w:p9", workspace_id: "w", agent: "pi", agent_status: "working" }] } }), err: "" };
-      return base.run(argv);
-    } };
+    const deps = {
+      ...base,
+      run: async (argv: readonly string[]) => {
+        if (argv[0] === "herdr" && argv[1] === "tab" && argv[2] === "create")
+          return {
+            code: 0,
+            out: JSON.stringify({ result: { root_pane: { pane_id: "w:p9" }, tab_id: "w:t9" } }),
+            err: "",
+          };
+        if (argv[0] === "herdr" && argv[1] === "pane" && argv[2] === "list")
+          return {
+            code: 0,
+            out: JSON.stringify({
+              result: { panes: [{ pane_id: "w:p9", workspace_id: "w", agent: "pi", agent_status: "working" }] },
+            }),
+            err: "",
+          };
+        return base.run(argv);
+      },
+    };
     return (await launchLane(deps, { key, title: "t", brief, done: "closed acme/app#3" })).startup;
   };
   session("2026-01-01T12:00:03.000Z", "narrow-lane", "active");

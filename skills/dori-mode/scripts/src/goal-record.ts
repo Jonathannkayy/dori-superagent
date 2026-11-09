@@ -22,7 +22,9 @@ const firstUserText = (jsonl: string): string => {
     if (entry?.type !== "message" || entry.message?.role !== "user") continue;
     const content = entry.message.content;
     if (typeof content === "string") return content;
-    return Array.isArray(content) ? content.map((part: { text?: unknown }) => (typeof part?.text === "string" ? part.text : "")).join("\n") : "";
+    return Array.isArray(content)
+      ? content.map((part: { text?: unknown }) => (typeof part?.text === "string" ? part.text : "")).join("\n")
+      : "";
   }
   return "";
 };
