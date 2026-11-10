@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { main } from "../src/cli.ts";
-import { parse } from "../src/cli-args.ts";
+import { parse, USAGE } from "../src/cli-args.ts";
 import { startLane } from "../src/lanes.ts";
 import { setup } from "./harness-setup.ts";
 import { href } from "./fake.ts";
@@ -21,4 +21,21 @@ test("boolean flags still need no value, and a value flag still takes the next a
   expect(parse(["duty", "--once"]).flags.get("once")).toEqual(["true"]);
   expect(parse(["--help"]).flags.get("help")).toEqual(["true"]);
   expect(parse(["send", "lead", "--text", "--to-shell"]).flags.get("text")).toEqual(["--to-shell"]);
+});
+
+test("--help before a command prints the usage and runs nothing", async () => {
+  const { w, d } = setup();
+  const before = w.calls.length;
+  const lines: string[] = [];
+  const log = console.log;
+  console.log = (...a: unknown[]) => {
+    lines.push(a.join(" "));
+  };
+  try {
+    expect(await main(["--help", "merge", "x/y#1"], d)).toBe(0);
+  } finally {
+    console.log = log;
+  }
+  expect(lines).toEqual([USAGE]);
+  expect(w.calls.slice(before)).toEqual([]);
 });
