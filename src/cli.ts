@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { runBacklog, runDuty, runLoop } from "./cli-loops.ts";
 import { status, up } from "./cli-up.ts";
@@ -54,9 +55,13 @@ export async function main(argv: readonly string[], d: Deps = defaultDeps()): Pr
   const [cmd, x] = a.pos;
   if (cmd !== undefined && COMMANDS.has(cmd)) d.usage.touch();
   switch (cmd) {
-    case "up":
-      await up(d, resolve(one(a, "cwd") ?? process.cwd()));
+    case "up": {
+      const cwd = resolve(one(a, "cwd") ?? process.cwd());
+      // Checked before the first session opens: all four sessions would start in it.
+      if (!statSync(cwd, { throwIfNoEntry: false })?.isDirectory()) throw new Refusal(`no directory ${cwd}`);
+      await up(d, cwd);
       return 0;
+    }
     case "role": {
       const role = need(x, "role") as Role;
       if (!ROLES.includes(role)) throw new Refusal(`role must be one of ${ROLES.join(", ")}`);
