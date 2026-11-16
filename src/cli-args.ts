@@ -48,9 +48,12 @@ export function parse(argv: readonly string[]): Args {
       pos.push(a);
       continue;
     }
-    const name = a.slice(2);
+    // --interval=60 is --interval 60; read whole, it would be a flag nobody reads that swallows the next argument.
+    const eq = a.indexOf("=");
+    const name = eq < 0 ? a.slice(2) : a.slice(2, eq);
+    if (eq >= 0 && BOOLEAN_FLAGS.has(name)) throw new Refusal(`--${name} takes no value`);
     // A value flag at the very end (--text $MSG with MSG unset) has no value; reading it as "true" would send that word.
-    const value = BOOLEAN_FLAGS.has(name) ? "true" : argv[++i];
+    const value = eq >= 0 ? a.slice(eq + 1) : BOOLEAN_FLAGS.has(name) ? "true" : argv[++i];
     if (value === undefined) throw new Refusal(`--${name} needs a value`);
     flags.set(name, [...(flags.get(name) ?? []), value]);
   }
