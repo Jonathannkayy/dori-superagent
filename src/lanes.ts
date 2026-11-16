@@ -94,6 +94,8 @@ export async function ready(
   evidence: readonly string[],
 ): Promise<SendResult | undefined> {
   if (evidence.length === 0) throw new Refusal("READY needs at least one --evidence link (a PR, a receipt, a file)");
+  // --evidence "$PR_URL" with PR_URL unset would mark the lane ready on an empty link.
+  if (evidence.some((e) => !e.trim())) throw new Refusal("READY --evidence is empty: give a PR, a receipt or a file");
   if (!text.trim()) throw new Refusal("READY needs the final answer text");
   const lane = openLane(d, key);
   const now = d.now();

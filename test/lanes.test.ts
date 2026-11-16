@@ -43,6 +43,16 @@ describe("lanes", () => {
     expect(w.panes.has(lane.paneId)).toBe(false);
     expect(d.store.lane("fix-login")!.status).toBe("done");
   });
+
+  test("ready refuses a blank --evidence (an unset $PR_URL), alone or beside a real link; the lane stays working", async () => {
+    const { d, lead, brief } = setup();
+    await startLane(d, "fix-login", brief, { group: "w1" });
+    lead.received.length = 0;
+    for (const evidence of [[""], ["  "], ["https://github.com/o/r/pull/1", ""]])
+      await expect(ready(d, "fix-login", "fixed", evidence)).rejects.toThrow("--evidence is empty");
+    expect(d.store.lane("fix-login")!.status).toBe("working");
+    expect(lead.received).toEqual([]);
+  });
 });
 
 describe("startLane group fallback", () => {
